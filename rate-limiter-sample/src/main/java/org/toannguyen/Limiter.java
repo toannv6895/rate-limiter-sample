@@ -1,14 +1,14 @@
 package org.toannguyen;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class Limiter {
     private static final Map<String, FixedWindow> hashMap = new HashMap<>();
+    private static final Map<String, Deque<Long>> hashMap2 = new HashMap<>();
     private static final int THRESHOLD = 3;
     private static final int PERIOD = 1000; // Miliseconds
 
-    public boolean request(String userId) {
+    public boolean fixedWindowRequest(String userId) {
         FixedWindow window = hashMap.get(userId);
         long now = System.currentTimeMillis();
         if (window == null || now - window.timestamp > PERIOD) {
@@ -22,5 +22,27 @@ public class Limiter {
 
             return false;
         }
+    }
+
+    public boolean slidingWindowRequest(String userId) {
+        Deque<Long> deque = hashMap2.get(userId);
+        long now = System.currentTimeMillis();
+        if (deque == null) {
+            deque = new ArrayDeque<>();
+            deque.addFirst(now);
+            hashMap2.put(userId, deque);
+            return true;
+        }
+
+        while (!deque.isEmpty() && now - deque.getFirst() > PERIOD) {
+            deque.removeFirst();
+        }
+
+        if (deque.size() > THRESHOLD) {
+            return false;
+        }
+
+        deque.addFirst(now);
+        return true;
     }
 }
